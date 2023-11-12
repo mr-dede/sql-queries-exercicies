@@ -1,0 +1,89 @@
+"Performing some practical exercises on the classic Northwind database."
+
+"Activity: select employess to compare their performance"
+SELECT emp.first_name,
+COUNT(o.order_id) AS quantidade_de_vendas,
+SUM(od.unit_price*od.quantity -od.discount) as valor_vendido
+FROM orders as o
+INNER JOIN employees as emp ON o.employee_id = emp.employee_id
+INNER JOIN order_details as od ON od.order_id = o.order_id
+where DATE_PART_YEAR(order_date) = 2021
+GROUP BY first_name
+ORDER BY valor_vendido, quantidade_de_vendas DESC
+
+"Activity: consolidation of product sales data by supplier"
+WITH first_year AS (
+SELECT s.company_name as nome_do_fornecedor,
+SUM(od.quantity*od.unit_price - od.discount) as valor_de_venda
+FROM order_details as od
+INNER JOIN products as p ON od.product_id = p.product_id
+INNER JOIN suppliers as s ON p.supplier_id = s.supplier_id
+INNER JOIN orders as o ON od.order_id = o.order_id
+WHERE DATE_PART_YEAR(o.order_date) = 2020
+GROUP BY nome_do_fornecedor
+),
+ 
+second_year AS (
+SELECT s.company_name as nome_do_fornecedor,
+SUM(od.quantity*od.unit_price - od.discount) as valor_de_venda
+FROM order_details as od
+INNER JOIN products as p ON od.product_id = p.product_id
+INNER JOIN suppliers as s ON p.supplier_id = s.supplier_id
+INNER JOIN orders as o ON od.order_id = o.order_id
+WHERE DATE_PART_YEAR(o.order_date) = 2021
+GROUP BY nome_do_fornecedor
+)
+ 
+SELECT fy.nome_do_fornecedor, fy.valor_de_venda as valor_de_2020,
+sy.valor_de_venda as valor_de_2021,
+(valor_de_2021 - valor_de_2020) as diferenca_entre_2022_e_2021
+FROM first_year as fy 
+INNER JOIN second_year as sy ON fy.nome_do_fornecedor = sy.nome_do_fornecedor
+ORDER BY diferenca_entre_2022_e_2021 DESC
+
+"Activity: consolidation of the best-selling categories per year"
+WITH year_2020 AS (
+SELECT c.category_name as nome_da_categoria, SUM(od.unit_price*od.quantity - od.discount) as total
+FROM order_details as od 
+INNER JOIN products as p ON od.product_id = p.product_id
+INNER JOIN categories as c ON p.category_id = c.category_id
+INNER JOIN orders as o ON od.order_id = o.order_id
+WHERE DATE_PART_YEAR(o.order_date) = 2020
+GROUP BY nome_da_categoria
+ORDER BY total DESC
+LIMIT 5
+),
+ 
+year_2021 AS (
+SELECT c.category_name as nome_da_categoria, SUM(od.unit_price*od.quantity - od.discount) as total
+FROM order_details as od 
+INNER JOIN products as p ON od.product_id = p.product_id
+INNER JOIN categories as c ON p.category_id = c.category_id
+INNER JOIN orders as o ON od.order_id = o.order_id
+WHERE DATE_PART_YEAR(o.order_date) = 2021
+GROUP BY nome_da_categoria
+ORDER BY total DESC
+LIMIT 5
+),
+ 
+year_2022 AS (
+SELECT c.category_name as nome_da_categoria, SUM(od.unit_price*od.quantity - od.discount) as total
+FROM order_details as od 
+INNER JOIN products as p ON od.product_id = p.product_id
+INNER JOIN categories as c ON p.category_id = c.category_id
+INNER JOIN orders as o ON od.order_id = o.order_id
+WHERE DATE_PART_YEAR(o.order_date) = 2022
+GROUP BY nome_da_categoria
+ORDER BY total DESC
+LIMIT 5
+)
+ 
+SELECT nome_da_categoria, total, '2020' as ano
+FROM year_2020
+UNION ALL
+SELECT nome_da_categoria, total, '2021' as ano
+FROM year_2021
+UNION ALL
+SELECT nome_da_categoria, total, '2022' as ano
+FROM year_2022
+ORDER BY ano, total DESC
